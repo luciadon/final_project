@@ -1,0 +1,167 @@
+---
+title: Standardising Learning Evaluation in CSIRO
+
+
+
+author:  Lucia Donskoi
+affiliation: CSIRO Workforce Strategy & Analytics (People Insights Team) # Or group/team
+photo: resources/img/photo.jpeg
+
+output: DSreport::project_summary
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  results = 'asis',
+  echo = FALSE,
+  warning = FALSE,
+  message = FALSE,
+  fig.align = 'center'
+)
+
+#Load libraries
+library(tidyverse)
+library(gapminder)
+library(kableExtra)
+library(readxl)
+library(lubridate)
+library(gganimate)
+library(RColorBrewer)
+
+nb.cols <- 12
+mycolors <- colorRampPalette(brewer.pal(8, "Spectral"))(nb.cols)
+
+
+#some data coming in and manipulating
+#To start let's bring in the data
+
+presurveyF3 <- read_xlsx('Data/PRE-SURVEY_FOCUS-3_23MAR2020.xls.xlsx')
+lsn9n10F3 <- read_xlsx('Data/FOCUS Lesson Days 9 & 10 Feedback - Intro to Data Visualisation(1-16).xlsx')
+lsn11n12F3 <- read_xlsx('Data/FOCUS Lesson Days 11 & 12 Feedback - Using Ggplot 2 & Intro to RMarkdown(1-8).xlsx')
+lsn13n14F3 <- read_xlsx('Data/FOCUS Lesson Days 13 & 14 Feedback - Data Management(1-14).xlsx')
+midsurveyF3 <- read_xlsx('Data/FOCUS Mid-Program Participant Survey(1-25) (2).xlsx')
+
+#for lessons, adding in a topic & lesson reference prior to join
+
+clean9n10 <- lsn9n10F3 %>% mutate(lesson = "9/10") %>% mutate (topic = "Analysing & Gathering Insight")
+clean11n12 <- lsn11n12F3 %>% mutate(lesson = "11/12") %>% mutate (topic = "Analysing & Gathering Insight")
+clean13n14 <- lsn13n14F3 %>% mutate(lesson = "13/14") %>% mutate (topic = "Data Management")
+
+#combining all of the lesson evlauations
+
+combined <- bind_rows(clean9n10, clean11n12, clean13n14) %>% rename(start_time = 'Start time', complete_time = 'Completion time')
+
+#Assigning topics to the pre program
+#first need to tidy data
+
+#Some participants completed the survey multiple times- will take ONLY the most recent completion
+
+#Parse datetime for completion
+
+
+#parse_date_time2(combined, ymd_hms('complete_time'))
+
+
+withdate <- presurveyF3 %>% mutate(Created = dmy_hms(Created)) %>%  arrange(desc(Created)) %>% 
+  group_by(Ident) %>% filter(Created == first(Created)) %>% mutate(DEID=runif(1,1,100)) 
+
+
+gathered <- gather(withdate, key = question, value = answer, -DEID, ) 
+spread <- spread (gathered, key=DEID, answer) %>% group_by(question)
+
+sample <- select(spread, 1:5)
+
+
+summary <- gathered %>% group_by(question, answer) %>% tally() %>% filter(question!='Ident') %>% 
+  filter(question!='Created')%>%   filter(question!='Other - please specify')
+numeric <- summary %>% mutate(answer2 = 
+                     str_replace_all(answer,c("Extensive+" = "3. Extensive", "Extremely+"= "4. Extremely",
+                                              "Moderately+"= "3. Moderately", "Not at+"= "1. Not",
+                                              "Slightly+"= "2. Slightly", "Some+"= "2. Some",
+                                              "Unsure+"= "0. Unsure", "Little+"= "1. Little",
+                                              "Not app+"= "0. Note app"))) %>% select(-answer)
+
+
+filtered <- numeric %>% filter(answer2%in%c("2. Slightly able", "3. Moderately able", "1. Not all able", "4. Extremely able"))
+
+```
+
+
+# Introduction
+My name is Lucia Donskoi, and I manage the People Insights team in CSIRO. I have been in CSIRO for 8 years, predominantly in HR Business Partnerting
+roles. Prior to data school I did not have much experience with coding at all, aside from a little online learning with SQL. My role consists largely of HR based reporting and analysis of our people data, which the team has always done from within excel. 
+
+
+
+# My Project
+
+For my project I am working with CSIRO's Learning and Development team in OD to develop a strandardised approach for aggregation, review and analysis of learning program feedback. Currently, practices are mixed across learning programs with a blend of online and hard copy feedback forms used, that are reviewed on an ad hoc basis. The intent of this project is to conceptualise a standard dashboard that might be used to provide a consistent overview of participant feedback in learning programs, to support a better understanding of the effectiveness and impact of L&D spend. 
+
+
+## Preliminary results
+
+My preliminary data comes in through a variety of online surveys, some with consistent question/answer patterns. Survey data is initially in multiple files. My script will initially join like data, add a subject for better comparison/aggregation, remove duplicate data (where a respondent completes more than one survey form per topic only the latest is used), and assign a random numeric identifier to anonynise the data. 
+
+
+
+**Tables**
+```{r mytable, echo=FALSE, message=FALSE, warning=FALSE, out.width='100%'}
+knitr::kable(head(sample, n = 5), format = "html", caption = "A sample of deidentified survey data") %>% 
+  kable_styling("striped")
+```
+
+
+**Plots from R**
+```{r standard-plot, out.width='60%', fig.align='center', fig.height= 4, fig.width=6, fig.cap="Overvire of participant Data Science Capabilities prior to joining Data School"}
+ggplot(filtered, aes(y=n, x=answer2, fill = answer2))+ geom_bar(position = "stack", stat = "identity")+
+  transition_states(question, state_length = 9, transition_length = 4)+
+  scale_fill_manual(values = mycolors)+labs(title="{closest_state}")+
+  theme_bw() + theme(panel.grid.minor = element_blank(),plot.title=element_text(face="bold"),
+                      strip.background = element_blank(), panel.grid.major = element_line(size = 1),
+                      axis.title = element_blank(),
+                      legend.position = "none")
+```
+
+One goal of this project is better understand how participant data science capabilities compare before and after Data School and whether the level of prior understanding has any relationship to lesson satisfaction.
+
+# My Digital Toolbox
+
+My project was completed entirely in R (although I confess I still needed the occasional excel peek, to try understand what I was trying to do), and I familiarised myself with a number of new libraries in the process
+
+* tidyverse
+* kableExtra
+* readxl
+* lubridate
+* gganimate
+* RColorBrewer
+
+## Favourite tool 
+
+
+
+![](https://raw.githubusercontent.com/tidyverse/ggplot2/master/man/figures/logo.png){.pull-right width=100px}
+![](resources/img/tidyverse.png){width=100px}
+
+
+Throughout this course I have developed a very strong love/hate relationship with the gather and spread functions in the tidyverse package. Although I find them exceedlingly frustrating, once mastered they consistently reduce hours and hours of excel wrangling time into seconds. I will continue to practice and hone in my skills here
+
+# My time went ...
+
+Gathering and spreading my data ofcourse. 
+
+I also found working with dates particurlarly challenging, and was fortunately introduced to the Lubridate package. 
+
+# Next steps
+
+I'm hoping to finalise a concept in the next few weeks, and then continue to work with the L&D team to develop an approach that will work for them in standardising feedback forms and how they are managed,to a point where one day forms can be easily loaded into an R script and transformed to an easy-to-navigate dashboard where they can be reviewed and analysed (potentially with the help of the shiny package)
+
+I am keen and excited to apply the skills I have learned to other areas of my work, and am already talking to team members about adding R to their toolkit. 
+
+
+
+# My Data School Experience
+
+My data school experience has been fantastic. In only week 2 of this course, my team was tasked with a project where the value of the skills we had only just learned was immediately evident, and together with Elise on my team (also part of the Focus 3 cohort) we were able to use them to solve a problem. 
+
+Although I still see excel playing a major role in the work that my team does, I feel strongly that R (or similar coding language) is something that anybody who works a lot with data should have in their toolbox - even in support functions such as HR, finance etc. I have begun to bring my team on the journey, by introducing them to R studio, running scripts and some basic data wrangling functions, with a hope to supplement this with formal learning in future. Thank you Focus team- Stephen and Kerensa- you have been incredible teachers, and Kristian thank you for keeping us organised and on track and adding a few laughs to every lesson!
+
+
